@@ -22,9 +22,11 @@ header-includes:
 ---
 
 # Introductions
+
 Spam has caused some distress in people's daily life, so identifying spam correctly becomes more and more important nowadays. This study aims to finding Which text characteristics influence whether an email will be classified as spam or not by analyzing the data shared with the UCI Machine Learning Repository.
 
 # Data Reading {#sec-DR}
+
 ```{r}
 #| label: libraries
 # Load the necessary package
@@ -54,75 +56,95 @@ d25.spam$crl.tot <- d25.spam$crl.tot/10
 According to the data, six main characteristics may exert an influence on classifying an email as spam. We divide "crl.tot" by 10 because the number is much larger than other data.
 
 # Analysis of Six Main Characteristics
+
 We firstly analyze these characteristics separately.
 
 ## Total length of uninterrupted sequences of capitals
+
 ```{r}
 #| fig.cap: Total length of uninterrupted sequences of capitals in an email
 #| fig-latex-options: [H]
 ggplot(data=d25.spam,aes(x=yesno,y=crl.tot,fill=yesno))+
   geom_boxplot()+
   labs(x="is the email a spam?")+
+  theme_minimal()+
   theme(legend.position="none")
 ```
+
 The boxplot shows that, on average, there are more uninterrupted sequences of capitals in a spam than in a normal email.  
 
 ## Occurrences of the dollar sign
+
 ```{r}
 #| fig.cap: Occurrences of the dollar sign in an email
 #| fig-latex-options: [H]
 ggplot(data=d25.spam,aes(x=yesno,y=dollar,fill=yesno))+
   geom_boxplot()+
   labs(x="is the email a spam?")+
+  theme_minimal()+
   theme(legend.position="none")
 ```
+
 This graph shows that, on average, dollar sign appears more frequently in a spam.
 
 ## Occurrences of ‘!’
+
 ```{r}
 #| fig.cap: Occurrences of ‘!’ in an email
 #| fig-latex-options: [H]
 ggplot(data=d25.spam,aes(x=yesno,y=bang,fill=yesno))+
   geom_boxplot()+
   labs(x="is the email a spam?")+
+  theme_minimal()+
   theme(legend.position="none")
 ```
+
 This boxplot shows that, on average, exclamation mark tend to occur more in a spam.  
 
 ## Occurrences of ‘money’
+
 ```{r}
 #| fig.cap: Occurrences of ‘money’ in an email
 #| fig-latex-options: [H]
 ggplot(data=d25.spam,aes(x=yesno,y=money,fill=yesno))+
   geom_boxplot()+
   labs(x="is the email a spam?")+
+  theme_minimal()+
   theme(legend.position="none")
 ```
+
 The graph shows that, on average, ‘money’ appears more frequently in a spam. 
 
 ## Occurrences of the string ‘000’
+
 ```{r}
 #| fig.cap: Occurrences of the string ‘000’ in an email
 #| fig-latex-options: [H]
 ggplot(data=d25.spam,aes(x=yesno,y=n000,fill=yesno))+
   geom_boxplot()+
   labs(x="is the email a spam?")+
+  theme_minimal()+
   theme(legend.position="none")
 ```
+
 The boxplot shows that, on average, the string ‘000’ is more likely to occur in a spam.
 
 ## Occurrences of ‘make’
+
 ```{r}
 #| fig.cap: Occurrences of ‘make’ in an email 
 #| fig-latex-options: [H]
 ggplot(data=d25.spam,aes(x=yesno,y=make,fill=yesno))+
   geom_boxplot()+
   labs(x="is the email a spam?")+
+  theme_minimal()+
   theme(legend.position="none")
 ```
+
 This graph shows that, on average, the occurences of 'make' in s spam is slightly more than in a noraml email.
 
 # Regression Results of the Data by using Generalized Linear Models
+
 ```{r}
 #| tbl-cap: Summary Statistics for the GLM.
 #| tbl-latex-options: [H]
@@ -131,15 +153,62 @@ model.spam <- glm(yesno ~ crl.tot + dollar + bang + money + n000 + make, data = 
 model.spam %>%
   summary()
 ```
+
 The coefficients of six characteristics are all positive, suggesting that spam tends to have more of these text characteristics. All the coefficients of the characteristics, except 'make', are significant because of the low p-values. 
 Then we can obtain the effect of these characteristics by looking at the exponential values.
 
+# Residuals Analysis
+
+```{r}
+d25.spam$residuals <- residuals(model.spam, type = "deviance")
+```
+
+```{r}
+#| fig.cap: Histogram of Residuals
+#| fig-latex-options: [H]
+ggplot(d25.spam, aes(x = residuals)) +
+  geom_histogram(binwidth = 0.5, fill = "blue", alpha = 0.6) +
+  labs(title = "Histogram of Residuals", x = "Residuals", y = "Frequency") +
+  theme_minimal()
+```
+
+This residual analysis plot shows the residual is skewed distribution, it may not completely follow the normal distribution. This means that the model has systematic errors in some intervals.
+
+```{r}
+#| fig.cap: Residuals vs Fitted Values
+#| fig-latex-options: [H]
+ggplot(d25.spam, aes(x = fitted(model.spam), y = residuals)) +
+  geom_point(alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Fitted value vs. Residuals", x = "Fitted values", y = "Residuals") +
+  theme_minimal()
+```
+
+This plot indicates that the residual are not randomly distributed, but show a systematic trend. Meanwhile, this plot means that the model has larger prediction errors for certain ranges, which may affect the reliability of the confidence interval.
+
+```{r}
+#| fig.cap: Q-Q Plot of Residualss
+#| fig-latex-options: [H]
+ggplot(data=d25.spam,aes(sample=residuals))+
+  stat_qq()+
+  stat_qq_line(color="red",lwd=1)+
+  labs(title="Q-Q Plot of Residuals", x="Theoretical Quantiles", y=" ")+
+  theme_minimal()
+```
+
+From the Q-Q Plot, residuals deviate from the reference line at most of the points, indicating deviations from normality.
+
 # Data Summary
+
 ```{r}
 #| fig.cap: Odds of classifying emails as spam
 #| fig-latex-options: [H]
-plot_model(model.spam, show.values = TRUE, title = "Odds", show.p = FALSE, value.offset = 0.25)
+plot_model(model.spam, show.values = TRUE, title = "Odds", show.p = FALSE, value.offset = 0.25)+
+  theme_minimal()
 ```
-According to the graph, when we look at a ten-characters length difference of uninterrupted sequences of capitals between two emails, the one having more uninterrupted sequences of capitals is 1.01 times more likely to be classified as spam than the one with less uninterrupted sequences of capitals. Also, with one unit increase in the occurences of dollar sign, exclamation mark, character 'money', string '000' and character 'make', the higher one's odds of be classified as spam are 1054.12 times, 2.08 times, 33.73 times, 245.92 times and 1.01 times than those of the lower one respectively.
+
+According to the graph, when we look at a ten-characters length difference of uninterrupted sequences of capitals between two emails, the one having more uninterrupted sequences of capitals is 1.01 times more likely to be classified as spam than the one with less uninterrupted sequences of capitals. Also, with one unit increase in the occurrences of dollar sign, exclamation mark, character 'money', string '000' and character 'make', the higher one's odds of be classified as spam are 1054.12 times, 2.08 times, 33.73 times, 245.92 times and 1.01 times than those of the lower one respectively.
 
 # Conclusions
+
+This analysis indicates that the occurrences of dollar sign in emails make them easiest to be classified as spam. The presence of the string '000' is also a characteristics that makes an email be identified as spam. Compared with them, the occurrences of 'money', bang and 'make' seem to be not important in classifying emails as spam. The study also demonstrates that, with the increase of the length of uninterrupted sequences of capitals, emails are more likly to be identified as spam.
