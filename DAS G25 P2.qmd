@@ -444,8 +444,8 @@ plot_model(model.spam3, show.values = TRUE, title = "Odds", show.p = F, value.of
   theme_minimal()
 ```
 
-According to the graph, a 1-unit increase in the log-transformed total length of capital letter sequences (log_crl.tot) increases spam odds by 176% (OR = 2.76). Emails with high-frequency dollar signs (dollar_binhigh) are 674% more likely to be spam (OR = 7.74), while low-frequency dollar signs (dollar_binlow) still elevate odds by 129% (OR = 2.29). Exclamation marks (log_bang) also exhibit the positive effect, with a 1-unit log increase raising spam likelihood by 3,923% (OR = 40.23). Mentions of "money" (OR = 9.41) and "000" (OR = 5.84) further amplify spam risk by 841% and 484%, respectively. Conversely, frequent use of "make" reduces spam odds by 52% (OR = 0.48), suggesting its association with legitimate content. 
-# Conclusions
+According to the graph, a 1-unit increase in the log-transformed total length of capital letter sequences (log_crl.tot) increases spam odds by 176% (OR = 2.76). Emails with high-frequency dollar signs (dollar_binhigh) are 674% more likely to be spam (OR = 7.74), while low-frequency dollar signs (dollar_binlow) still elevate odds by 129% (OR = 2.29). Exclamation marks (log_bang) also exhibit the positive effect, with a 1-unit log increase raising spam likelihood by 3,923% (OR = 40.23). Mentions of "money" (OR = 9.41) and "000" (OR = 5.84) further amplify spam risk by 841% and 484%, respectively. Conversely, frequent use of "make" reduces spam odds by 52% (OR = 0.48), suggesting its association with legitimate content.
 
+# Conclusions
 
 These findings highlight the importance of financial symbols ($, "money"), exaggerated punctuation (!), and anomalous patterns (capital bursts, "000") as spam indicators, while terms like "make" may signal non-spam context. This evidence directly informs targeted improvements for spam filtering systems.
