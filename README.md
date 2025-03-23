@@ -1,7 +1,7 @@
 # Spam Email Classification Analysis
 
 ## Dataset Information
-Datasets 25 was collected by Hewlett-Packard Labs and shared with the UCI Machine Learning Repository. These dataset contains data about classifying emails as spam or not spam, with extra information showing the frequency of certain words and characters in the email.
+Dataset 25 was collected by Hewlett-Packard Labs and shared with the UCI Machine Learning Repository. These dataset contains data about classifying emails as spam or not spam, with extra information showing the frequency of certain words and characters in the email.
 
 ### Variables:
 - **crl.tot** – The total length of uninterrupted sequences of capital letters.
