@@ -36,6 +36,9 @@ library(gapminder)
 library(sjPlot)
 library(stats)
 library(jtools)
+library(skimr)
+library(pROC)
+library(ResourceSelection)
 ```
 
 ```{r}
@@ -44,16 +47,59 @@ library(jtools)
 d25 <- read.csv("dataset25.csv")
 ```
 
+## Summary of the Data
+
 ```{r}
-#| label: selection
-# select different data
-d25.spam <- d25 %>%
-  select(yesno,crl.tot,dollar,bang,money,n000,make)
-d25.spam$yesno <- as.factor(d25.spam$yesno)
-d25.spam$crl.tot <- d25.spam$crl.tot/10
+#| label: skim
+#| tbl-cap: Summary of the Data
+#| tbl-latex-options: [H]
+# Generate a summary of the dataset
+d25 %>% skim()
 ```
 
-According to the data, six main characteristics may exert an influence on classifying an email as spam. We divide "crl.tot" by 10 because the number is much larger than other data.
+```{r}
+#| label: selection
+# Select relevant variables and transform data
+d25.spam <- d25 %>%
+  select(yesno, crl.tot, dollar, bang, money, n000, make)
+
+# Convert 'yesno' to a factor and scale 'crl.tot'
+d25.spam$yesno <- as.factor(d25.spam$yesno)
+d25.spam$crl.tot <- d25.spam$crl.tot / 100
+```
+
+According to the data, six main characteristics may exert an influence on classifying an email as spam. We divide "crl.tot" by 100 because the number is much larger than other data.
+
+## Data Visualization
+
+```{r}
+#| label: histogram-variables
+#| fig-cap: Histogram of Variables  
+# Create histograms for selected variables
+d25.spam %>%
+  pivot_longer(cols = c(crl.tot, dollar, bang, money, n000, make), 
+               names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = value)) +
+  geom_histogram(bins = 30, fill = "blue", alpha = 0.5) +
+  facet_wrap(~variable, scales = "free") +
+  theme_minimal()
+```
+
+```{r}
+#| label: boxplot-variables
+#| fig-cap: Boxplot of Variables by Spam Label 
+# Create boxplots for selected variables grouped by spam label
+d25.spam %>%
+  pivot_longer(cols = c(crl.tot, dollar, bang, money, n000, make), 
+               names_to = "variable", values_to = "value") %>%
+  ggplot(aes(x = yesno, y = value, fill = yesno)) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+The distribution of the explanatory variables and their skewness can be seen in these plots, with a large number of discrete points that may need to be further analyzed and processed.
 
 # Analysis of Six Main Characteristics
 
@@ -62,13 +108,14 @@ We firstly analyze these characteristics separately.
 ## Total length of uninterrupted sequences of capitals
 
 ```{r}
-#| fig.cap: Total length of uninterrupted sequences of capitals in an email
-#| fig-latex-options: [H]
-ggplot(data=d25.spam,aes(x=yesno,y=crl.tot,fill=yesno))+
-  geom_boxplot()+
-  labs(x="is the email a spam?")+
-  theme_minimal()+
-  theme(legend.position="none")
+#| label: boxplot-crl-tot
+#| fig-cap: Total length of uninterrupted sequences of capitals in an email
+# Boxplot of 'crl.tot' grouped by spam label
+ggplot(data = d25.spam, aes(x = yesno, y = crl.tot, fill = yesno)) +
+  geom_boxplot() +
+  labs(x = "Is the email a spam?") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 The boxplot shows that, on average, there are more uninterrupted sequences of capitals in a spam than in a normal email.  
@@ -76,13 +123,14 @@ The boxplot shows that, on average, there are more uninterrupted sequences of ca
 ## Occurrences of the dollar sign
 
 ```{r}
-#| fig.cap: Occurrences of the dollar sign in an email
-#| fig-latex-options: [H]
-ggplot(data=d25.spam,aes(x=yesno,y=dollar,fill=yesno))+
-  geom_boxplot()+
-  labs(x="is the email a spam?")+
-  theme_minimal()+
-  theme(legend.position="none")
+#| label: boxplot-dollar
+#| fig-cap: Occurrences of the dollar sign in an email
+# Boxplot of 'dollar' grouped by spam label
+ggplot(data = d25.spam, aes(x = yesno, y = dollar, fill = yesno)) +
+  geom_boxplot() +
+  labs(x = "Is the email a spam?") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 This graph shows that, on average, dollar sign appears more frequently in a spam.
@@ -90,13 +138,14 @@ This graph shows that, on average, dollar sign appears more frequently in a spam
 ## Occurrences of ‘!’
 
 ```{r}
-#| fig.cap: Occurrences of ‘!’ in an email
-#| fig-latex-options: [H]
-ggplot(data=d25.spam,aes(x=yesno,y=bang,fill=yesno))+
-  geom_boxplot()+
-  labs(x="is the email a spam?")+
-  theme_minimal()+
-  theme(legend.position="none")
+#| label: boxplot-bang
+#| fig-cap: Occurrences of ‘!’ in an email
+# Boxplot of 'bang' grouped by spam label
+ggplot(data = d25.spam, aes(x = yesno, y = bang, fill = yesno)) +
+  geom_boxplot() +
+  labs(x = "Is the email a spam?") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 This boxplot shows that, on average, exclamation mark tend to occur more in a spam.  
@@ -104,13 +153,14 @@ This boxplot shows that, on average, exclamation mark tend to occur more in a sp
 ## Occurrences of ‘money’
 
 ```{r}
-#| fig.cap: Occurrences of ‘money’ in an email
-#| fig-latex-options: [H]
-ggplot(data=d25.spam,aes(x=yesno,y=money,fill=yesno))+
-  geom_boxplot()+
-  labs(x="is the email a spam?")+
-  theme_minimal()+
-  theme(legend.position="none")
+#| label: boxplot-money
+#| fig-cap: Occurrences of ‘money’ in an email
+# Boxplot of 'money' grouped by spam label
+ggplot(data = d25.spam, aes(x = yesno, y = money, fill = yesno)) +
+  geom_boxplot() +
+  labs(x = "Is the email a spam?") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 The graph shows that, on average, ‘money’ appears more frequently in a spam. 
@@ -118,13 +168,14 @@ The graph shows that, on average, ‘money’ appears more frequently in a spam.
 ## Occurrences of the string ‘000’
 
 ```{r}
-#| fig.cap: Occurrences of the string ‘000’ in an email
-#| fig-latex-options: [H]
-ggplot(data=d25.spam,aes(x=yesno,y=n000,fill=yesno))+
-  geom_boxplot()+
-  labs(x="is the email a spam?")+
-  theme_minimal()+
-  theme(legend.position="none")
+#| label: boxplot-n000
+#| fig-cap: Occurrences of the string ‘000’ in an email
+# Boxplot of 'n000' grouped by spam label
+ggplot(data = d25.spam, aes(x = yesno, y = n000, fill = yesno)) +
+  geom_boxplot() +
+  labs(x = "Is the email a spam?") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 The boxplot shows that, on average, the string ‘000’ is more likely to occur in a spam.
@@ -132,83 +183,344 @@ The boxplot shows that, on average, the string ‘000’ is more likely to occur
 ## Occurrences of ‘make’
 
 ```{r}
-#| fig.cap: Occurrences of ‘make’ in an email 
-#| fig-latex-options: [H]
-ggplot(data=d25.spam,aes(x=yesno,y=make,fill=yesno))+
-  geom_boxplot()+
-  labs(x="is the email a spam?")+
-  theme_minimal()+
-  theme(legend.position="none")
+#| label: boxplot-make
+#| fig-cap: Occurrences of ‘make’ in an email 
+# Boxplot of 'make' grouped by spam label
+ggplot(data = d25.spam, aes(x = yesno, y = make, fill = yesno)) +
+  geom_boxplot() +
+  labs(x = "Is the email a spam?") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 This graph shows that, on average, the occurences of 'make' in s spam is slightly more than in a noraml email.
 
 # Regression Results of the Data by using Generalized Linear Models
+## Fitting the full model
 
 ```{r}
+#| label: glm-summary
 #| tbl-cap: Summary Statistics for the GLM.
 #| tbl-latex-options: [H]
-model.spam <- glm(yesno ~ crl.tot + dollar + bang + money + n000 + make, data = d25.spam, family = binomial(link = "logit"))
+# Fit a logistic regression model predicting spam emails
+model.spam <- glm(yesno ~ crl.tot + dollar + bang + money + n000 + make, 
+                  data = d25.spam, 
+                  family = binomial(link = "logit"))
 
+# Display model summary
 model.spam %>%
   summary()
 ```
+The spam classification model is defined as:
 
-The coefficients of six characteristics are all positive, suggesting that spam tends to have more of these text characteristics. All the coefficients of the characteristics, except 'make', are significant because of the low p-values. 
-Then we can obtain the effect of these characteristics by looking at the exponential values.
+$$
+\log\left(\frac{P(\text{yesno} = \text{yes})}{1 - P(\text{yesno} = \text{yes})}\right) = \beta_0 + \beta_1 \cdot \text{crl.tot} + \beta_2 \cdot \text{dollar} + \beta_3 \cdot \text{bang} + \beta_4 \cdot \text{money} + \beta_5 \cdot \text{n000} + \beta_6 \cdot \text{make}
+$$
 
-# Residuals Analysis
+
+
+Where:
+
+- $\text{crl.tot}$: Total length of uninterrupted capital sequences  
+- $\text{dollar}$: Frequency of the dollar sign (`$`)  
+- $\text{bang}$: Frequency of exclamation marks (`!`)  
+- $\text{money}$: Frequency of the word "money"  
+- $\text{n000}$: Frequency of the string "000"  
+- $\text{make}$: Frequency of the word "make"
+
+The coefficients of six characteristics are all positive, suggesting that spam tends to have more of these text characteristics. All the coefficients of the characteristics, except 'make', are significant because of the low p-values.
+But there is a warning message shows that glm.fit: fitted probabilities numerically 0 or 1 occurred. And the distributions of many of the explanatory variables were heavily skewed, so we decided to treat the data. 
+
+## Transformation of data
+Crl.tot shows a right-skewed distribution (mean 2.758, maximum 37.52), but there is a high proportion of non-zero values, which is suitable for mitigating the skewness by logarithmic transformation.
+Bang is heavily right skewed (mean 0.292, max 19.13), but has a certain percentage of non-zero values (median 0.044), which is suitable for logarithmic transformation.
 
 ```{r}
-d25.spam$residuals <- residuals(model.spam, type = "deviance")
+#| label: log-transformation
+# Apply log transformation to selected variables
+d25.spam$log_crl.tot <- log(d25.spam$crl.tot + 1)  
+d25.spam$log_bang <- log(d25.spam$bang + 1)
 ```
 
+Most of the values of dollar , money, n000 and make are 0, with more extreme values, and the model can be simplified by binning to reduce noise and nonlinear effects.
+
 ```{r}
-#| fig.cap: Histogram of Residuals
-#| fig-latex-options: [H]
-ggplot(d25.spam, aes(x = residuals)) +
-  geom_histogram(binwidth = 0.5, fill = "blue", alpha = 0.6) +
-  labs(title = "Histogram of Residuals", x = "Residuals", y = "Frequency") +
+#| label: binning-variables
+# Bin numeric variables into categorical groups
+d25.spam$dollar_bin <- cut(d25.spam$dollar,
+                           breaks = c(-1, 0, 0.1, Inf),
+                           labels = c("0", "low", "high"))
+d25.spam$money_bin <- cut(d25.spam$money,
+                          breaks = c(-1, 0, 0.1, Inf),
+                          labels = c("0", "low", "high"))
+d25.spam$n000_bin <- cut(d25.spam$n000,
+                         breaks = c(-1, 0, 0.1, Inf),
+                         labels = c("0", "low", "high"))
+d25.spam$make_bin <- cut(d25.spam$make,
+                         breaks = c(-1, 0, 0.1, Inf),
+                         labels = c("0", "low", "high"))
+```
+
+
+## Visualization of processed data
+
+```{r}
+#| label: fig-group1
+#| fig-cap: "Group 1: Transformed Variables"
+#| fig-align: center
+#| fig-width: 5
+#| fig-height: 2
+#| layout-ncol: 2
+# Visualizing log-transformed variables
+p1 <- ggplot(d25.spam, aes(x = log_crl.tot, fill = yesno)) +
+  geom_density(alpha = 0.6) +
+  labs(title = "Distribution of log(crl.tot + 1)", x = "log(crl.tot + 1)", y = "Density") +
   theme_minimal()
-```
 
-This residual analysis plot shows the residual is skewed distribution, it may not completely follow the normal distribution. This means that the model has systematic errors in some intervals.
+p2 <- ggplot(d25.spam, aes(x = yesno, y = log_crl.tot, fill = yesno)) +
+  geom_boxplot() +
+  labs(title = "log(crl.tot + 1) by Spam Class", x = "Spam Class", y = "log(crl.tot + 1)") +
+  theme_minimal()
+
+p3 <- ggplot(d25.spam, aes(x = log_bang, fill = yesno)) +
+  geom_density(alpha = 0.6) +
+  labs(title = "Distribution of log(bang + 1)", x = "log(bang + 1)", y = "Density") +
+  theme_minimal()
+
+p4 <- ggplot(d25.spam, aes(x = yesno, y = log_bang, fill = yesno)) +
+  geom_boxplot() +
+  labs(title = "log(bang + 1) by Spam Class", x = "Spam Class", y = "log(bang + 1)") +
+  theme_minimal()
+
+p1; p2; p3; p4;
+```
+The log-transformed variables (crl.tot and bang) show distinct differences between spam (y) and non-spam (n) emails. The density plots indicate that spam emails tend to have higher values for both log(crl.tot + 1) and log(bang + 1). The boxplots further confirm this trend, showing a higher median and broader distribution for spam emails, particularly for log(bang + 1), which has many extreme values.
+
+\newpage
+```{r}
+#| label: fig-group2
+#| fig-cap: "Group 2: Binned Variables"
+#| fig-align: center
+#| fig-width: 5
+#| fig-height: 2
+#| layout-ncol: 2
+# Visualizing binned variables
+p5 <- ggplot(d25.spam, aes(x = dollar_bin, fill = yesno)) +
+  geom_bar(position = "fill") +  
+  labs(title = "Dollar Frequency Bins vs Spam", x = "Dollar Bin", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p6 <- ggplot(d25.spam, aes(x = money_bin, fill = yesno)) +
+  geom_bar(position = "fill") +
+  labs(title = "Money Frequency Bins vs Spam", x = "Money Bin", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p7 <- ggplot(d25.spam, aes(x = n000_bin, fill = yesno)) +
+  geom_bar(position = "fill") +
+  labs(title = "n000 Frequency Bins vs Spam", x = "n000 Bin", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p8 <- ggplot(d25.spam, aes(x = make_bin, fill = yesno)) +
+  geom_bar(position = "fill") +
+  labs(title = "Make Frequency Bins vs Spam", x = "Make Bin", y = "Proportion") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+p5; p6; p7; p8;
+```
+The proportion plots reveal strong associations between categorical frequency bins and spam classification. Emails with high occurrences of "$" (dollar), "money," and "000" have a much greater proportion of spam, suggesting that these words are strong spam indicators. Conversely, the presence of the word "make" does not show a clear spam association, as its proportions remain more balanced across spam and non-spam emails.
+
+## Fitting a model with processed data
 
 ```{r}
-#| fig.cap: Residuals vs Fitted Values
-#| fig-latex-options: [H]
-ggplot(d25.spam, aes(x = fitted(model.spam), y = residuals)) +
-  geom_point(alpha = 0.5) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
-  labs(title = "Fitted value vs. Residuals", x = "Fitted values", y = "Residuals") +
-  theme_minimal()
+#| label: glm-model2
+#| tbl-cap: Summary Statistics for the second model of GLM.
+#| tbl-latex-options: [H]
+# Fit a second logistic regression model with transformed variables
+model.spam2 <- glm(yesno ~ log_crl.tot + dollar_bin + log_bang + money_bin + n000_bin + make_bin, 
+                   data = d25.spam, 
+                   family = binomial(link = "logit"))
+
+# Display model summary
+model.spam2 %>%
+  summary()
 ```
 
-This plot indicates that the residual are not randomly distributed, but show a systematic trend. Meanwhile, this plot means that the model has larger prediction errors for certain ranges, which may affect the reliability of the confidence interval.
+
+
+The refined logistic regression model is defined as:
+
+$$
+\log\left(\frac{P(\text{yesno} = \text{yes})}{1 - P(\text{yesno} = \text{yes})}\right) = \beta_0 + \beta_1 \cdot \log(\text{crl.tot} + 1) + \beta_2 \cdot \text{dollar\_bin} + \beta_3 \cdot \log(\text{bang} + 1) + \beta_4 \cdot \text{money\_bin} + \beta_5 \cdot \text{n000\_bin} + \beta_6 \cdot \text{make\_bin}
+$$
+
+
+
+Where:
+
+- $\log(\text{crl.tot} + 1)$: Log-transformed total length of capital sequences.  
+- $\text{dollar\_bin}$: Binned frequency of `$` (categories: `0`, `low`, `high`).  
+- $\log(\text{bang} + 1)$: Log-transformed frequency of `!`.  
+- $\text{money\_bin}$, $\text{n000\_bin}$, $\text{make\_bin}$: Binned frequencies of "money", "000", and "make" (categories: `0`, `low`, `high`).
+
+
+This model does not have the warning messages that appear in the full model. The Longer sequences of capital letters (log_crl.tot) and frequent exclamation marks (log_bang) strongly increase spam likelihood, with highly significant coefficients (p < 0.001). High-frequency dollar signs (dollar_binhigh) and mentions of "money" (money_binhigh) are also significant spam indicators. Notably, even low-frequency dollar signs (dollar_binlow) show a moderate positive effect. The presence of "000" strings (n000_binhigh) further raises spam risk. Conversely, low-frequency use of "make" (make_binlow) significantly reduces spam probability. Variables like money_binlow, n000_binlow, and make_binhigh are statistically insignificant (p > 0.05), suggesting limited impact. 
+
+We chose to merge certain variable categories (e.g., combining "low" and "0" frequency bins) to address statistical insignificance while preserving meaningful information. 
+
+## Combining insignificant variables and fitting a new model
 
 ```{r}
-#| fig.cap: Q-Q Plot of Residualss
-#| fig-latex-options: [H]
-ggplot(data=d25.spam,aes(sample=residuals))+
-  stat_qq()+
-  stat_qq_line(color="red",lwd=1)+
-  labs(title="Q-Q Plot of Residuals", x="Theoretical Quantiles", y=" ")+
-  theme_minimal()
+#| label: glm-model3
+#| tbl-cap: Summary Statistics for the third model of GLM.
+#| tbl-latex-options: [H]
+# Merge categories for selected binned variables
+d25.spam <- d25.spam %>%
+  mutate(
+    money_bin_merged = case_when(
+      money_bin %in% c("0", "low") ~ "0_low",  
+      money_bin == "high" ~ "high"
+    ),
+    n000_bin_merged = case_when(
+      n000_bin %in% c("0", "low") ~ "0_low",  
+      n000_bin == "high" ~ "high"
+    ),
+    make_bin_merged = case_when(
+      make_bin == "0" ~ "0",          
+      make_bin %in% c("low", "high") ~ "present"  
+    )
+  )
+
+# Fit a third logistic regression model with merged categories
+model.spam3 <- glm(yesno ~ log_crl.tot + dollar_bin + log_bang + money_bin_merged + n000_bin_merged + make_bin_merged, 
+                   data = d25.spam, 
+                   family = binomial(link = "logit"))
+
+# Display model summary
+model.spam3 %>%
+  summary()
 ```
 
-From the Q-Q Plot, residuals deviate from the reference line at most of the points, indicating deviations from normality.
+
+
+The final logistic regression model with merged bins is defined as:
+
+\begin{align*}
+\log\left(\frac{P(\text{yesno} = \text{spam})}{1 - P(\text{yesno} = \text{spam})}\right) 
+&= \beta_0 + \beta_1 \cdot \log(\text{crl.tot} + 1) + \beta_2 \cdot \text{dollar\_bin} \\
+&\quad + \beta_3 \cdot \log(\text{bang} + 1) + \beta_4 \cdot \text{money\_bin\_merged} \\
+&\quad + \beta_5 \cdot \text{n000\_bin\_merged} + \beta_6 \cdot \text{make\_bin\_merged}
+\end{align*}
+
+
+
+
+Where:
+
+- $\log(\text{crl.tot} + 1)$: Log-transformed total capital sequence length.  
+- $\text{dollar\_bin}$: Binned `$` frequency (`0`, `low`, `high`).  
+- $\log(\text{bang} + 1)$: Log-transformed `!` frequency.  
+- $\text{money\_bin\_merged}$: Merged bins for "money" (`0_low`, `high`).  
+- $\text{n000\_bin\_merged}$: Merged bins for "000" (`0_low`, `high`).  
+- $\text{make\_bin\_merged}$: Merged bins for "make" (`0`, `present`).
+
+The refined model demonstrates strong statistical performance with all retained variables achieving significance at $\alpha = 0.05$ or stricter thresholds, indicating strong predictors of spam classification.
+The AIC (687.07) remains nearly unchanged compared to the previous model (AIC: 682.07), suggesting minimal information loss despite reduced complexity. 
+
+
+
+# Assess the Model
+## Assess the predictive power
+```{r}
+#| label: roc-analysis
+#| fig-cap: ROC Curves for Spam Detection Models  
+# Compute predicted probabilities for each model
+predicted_prob <- predict(model.spam, type = "response")
+predicted_prob2 <- predict(model.spam2, type = "response")
+predicted_prob3 <- predict(model.spam3, type = "response")
+
+# Compute ROC curves
+roc_obj <- roc(response = d25.spam$yesno, predictor = predicted_prob)
+roc_obj2 <- roc(response = d25.spam$yesno, predictor = predicted_prob2)
+roc_obj3 <- roc(response = d25.spam$yesno, predictor = predicted_prob3)
+
+# Plot ROC curves for each model
+plot(roc_obj, main = "ROC Curve for Spam Detection Model 1", print.auc = TRUE, auc.polygon = TRUE, legacy.axes = TRUE) 
+plot(roc_obj2, main = "ROC Curve for Spam Detection Model 2", print.auc = TRUE, auc.polygon = TRUE, legacy.axes = TRUE)   
+plot(roc_obj3, main = "ROC Curve for Spam Detection Model 3", print.auc = TRUE, auc.polygon = TRUE, legacy.axes = TRUE)   
+
+# Compute and display AUC values
+auc_value <- auc(roc_obj)
+auc_value2 <- auc(roc_obj2)
+auc_value3 <- auc(roc_obj3)
+cat("AUC1:", auc_value, "\n", "AUC2:", auc_value2, "\n", "AUC3:", auc_value3, "\n")
+```
+The three models all achieve an excellent AUC, indicating strong discriminatory power to distinguish spam from non-spam emails. The AUC of the second model is a little bit better than the AUC of the third model, but the difference is very small.
+
+## Hosmer-Lemeshow goodness of fit test
+```{r}
+#| label: hosmer-lemeshow
+#| tbl-cap: Hosmer-Lemeshow Test and Calibration Plots  
+# Convert spam labels to numeric for the test
+d25.spam$yesno_numeric <- ifelse(d25.spam$yesno == "y", 1, 0)
+
+# Hosmer-Lemeshow test for Model 1
+hoslem.test(d25.spam$yesno_numeric, fitted(model.spam), g = 7)
+calibration_data <- data.frame(Predicted = predict(model.spam, type = "response"), Actual = d25.spam$yesno_numeric)
+
+# Calibration plot for Model 1
+ggplot(calibration_data, aes(x = Predicted, y = Actual)) +
+  geom_smooth(color = "blue") +
+  geom_abline(linetype = "dashed", color = "red") +
+  labs(title = "Calibration Plot for Model 1", x = "Predicted Probability", y = "Observed Proportion")
+
+# Hosmer-Lemeshow test for Model 2
+hoslem.test(d25.spam$yesno_numeric, fitted(model.spam2), g = 7)
+calibration_data2 <- data.frame(Predicted = predict(model.spam2, type = "response"), Actual = d25.spam$yesno_numeric)
+
+# Calibration plot for Model 2
+ggplot(calibration_data2, aes(x = Predicted, y = Actual)) +
+  geom_smooth(color = "blue") +
+  geom_abline(linetype = "dashed", color = "red") +
+  labs(title = "Calibration Plot for Model 2", x = "Predicted Probability", y = "Observed Proportion")
+
+# Hosmer-Lemeshow test for Model 3
+hoslem.test(d25.spam$yesno_numeric, fitted(model.spam3), g = 7)
+calibration_data3 <- data.frame(Predicted = predict(model.spam3, type = "response"), Actual = d25.spam$yesno_numeric)
+
+# Calibration plot for Model 3
+ggplot(calibration_data3, aes(x = Predicted, y = Actual)) +
+  geom_smooth(color = "blue") +
+  geom_abline(linetype = "dashed", color = "red") +
+  labs(title = "Calibration Plot for Model 3", x = "Predicted Probability", y = "Observed Proportion")
+```
+
+
+
+The Hosmer-Lemeshow test of the third model (p = 0.059) indicates borderline non-significant evidence of miscalibration, suggesting the model’s predicted probabilities may slightly deviate from observed outcomes.
+
+The calibration plot shows strong agreement between predicted and observed probabilities in low-to-mid ranges but reveals minor overestimation in high-risk predictions and slight underestimation at extreme probabilities, suggesting localized calibration biases.
+
+The p-value for the first model is much less than $\alpha = 0.05$, and the calibration plot also shows very large calibration biases.
+
+The second model also has a p-value of less than $\alpha = 0.05$, and the calibration plot also has more segments than the third model calibration biases.
+
 
 # Data Summary
 
 ```{r}
-#| fig.cap: Odds of classifying emails as spam
-#| fig-latex-options: [H]
-plot_model(model.spam, show.values = TRUE, title = "Odds", show.p = FALSE, value.offset = 0.25)+
+#| label: odds-ratio
+#| fig-cap: Odds Ratios for Model 3  
+# Visualizing the odds ratios from the final logistic regression model
+plot_model(model.spam3, show.values = TRUE, title = "Odds Ratios for Model 3", show.p = FALSE, value.offset = 0.25) +
   theme_minimal()
 ```
 
-According to the graph, when we look at a ten-characters length difference of uninterrupted sequences of capitals between two emails, the one having more uninterrupted sequences of capitals is 1.01 times more likely to be classified as spam than the one with less uninterrupted sequences of capitals. Also, with one unit increase in the occurrences of dollar sign, exclamation mark, character 'money', string '000' and character 'make', the higher one's odds of be classified as spam are 1054.12 times, 2.08 times, 33.73 times, 245.92 times and 1.01 times than those of the lower one respectively.
+According to the graph, a 1-unit increase in the log-transformed total length of capital letter sequences (log_crl.tot) increases spam odds by 176% (OR = 2.76). Emails with high-frequency dollar signs (dollar_binhigh) are 674% more likely to be spam (OR = 7.74), while low-frequency dollar signs (dollar_binlow) still elevate odds by 129% (OR = 2.29). Exclamation marks (log_bang) also exhibit the positive effect, with a 1-unit log increase raising spam likelihood by 3,923% (OR = 40.23). Mentions of "money" (OR = 9.41) and "000" (OR = 5.84) further amplify spam risk by 841% and 484%, respectively. Conversely, frequent use of "make" reduces spam odds by 52% (OR = 0.48), suggesting its association with legitimate content.
 
 # Conclusions
 
-This analysis indicates that the occurrences of dollar sign in emails make them easiest to be classified as spam. The presence of the string '000' is also a characteristics that makes an email be identified as spam. Compared with them, the occurrences of 'money', bang and 'make' seem to be not important in classifying emails as spam. The study also demonstrates that, with the increase of the length of uninterrupted sequences of capitals, emails are more likly to be identified as spam.
+These findings highlight the importance of financial symbols ($, "money"), exaggerated punctuation (!), and anomalous patterns (capital bursts, "000") as spam indicators, while terms like "make" may signal non-spam context. This evidence directly informs targeted improvements for spam filtering systems.
